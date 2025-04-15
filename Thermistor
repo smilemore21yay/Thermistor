@@ -1,0 +1,119 @@
+# Arduino Code
+#include <math.h> // For log()
+
+// --- Thermistor Setup ---
+#define THERMISTORPIN A0         
+#define THERMISTORNOMINAL 10000      // resistance at 25°C
+#define TEMPERATURENOMINAL 25        // nominal temperature (°C)
+#define NUMSAMPLES 5                 // number of samples to average
+#define BCOEFFICIENT 3950            // thermistor beta coefficient
+#define SERIESRESISTOR 10000         // fixed resistor value in ohms
+
+int samples[NUMSAMPLES];
+
+void setup() {
+  Serial.begin(9600);
+  while (!Serial) {}
+}
+
+void loop() {
+  float average = 0;
+  uint8_t i;
+
+  // Take NUMSAMPLES analog readings
+  for (i = 0; i < NUMSAMPLES; i++) {
+    samples[i] = analogRead(THERMISTORPIN);
+    delay(10);
+  }
+
+  // Calculate average reading
+  for (i = 0; i < NUMSAMPLES; i++) {
+    average += samples[i];
+  }
+  average /= NUMSAMPLES;
+
+  // Safety check to avoid divide-by-zero
+  if (average == 0) {
+    Serial.println("0.00");  // send 0 to Python if sensor is disconnected
+    delay(1000);
+    return;
+  }
+
+  // Convert analog reading to resistance
+  float resistance = 1023.0 / average - 1.0;
+  resistance = SERIESRESISTOR / resistance;
+
+  // Apply Steinhart-Hart equation
+  float steinhart;
+  steinhart = resistance / THERMISTORNOMINAL;
+  steinhart = log(steinhart);
+  steinhart /= BCOEFFICIENT;
+  steinhart += 1.0 / (TEMPERATURENOMINAL + 273.15);
+  steinhart = 1.0 / steinhart;
+  steinhart -= 273.15; // Convert to Celsius
+
+  // ✅ Send only the number (easy for Python to parse)
+  Serial.println(steinhart);
+
+  delay(2000); // Log every 2 seconds
+}
+
+# Jupyter Code
+#include <math.h> // For log()
+
+// --- Thermistor Setup ---
+#define THERMISTORPIN A0         
+#define THERMISTORNOMINAL 10000      // resistance at 25°C
+#define TEMPERATURENOMINAL 25        // nominal temperature (°C)
+#define NUMSAMPLES 5                 // number of samples to average
+#define BCOEFFICIENT 3950            // thermistor beta coefficient
+#define SERIESRESISTOR 10000         // fixed resistor value in ohms
+
+int samples[NUMSAMPLES];
+
+void setup() {
+  Serial.begin(9600);
+  while (!Serial) {}
+}
+
+void loop() {
+  float average = 0;
+  uint8_t i;
+
+  // Take NUMSAMPLES analog readings
+  for (i = 0; i < NUMSAMPLES; i++) {
+    samples[i] = analogRead(THERMISTORPIN);
+    delay(10);
+  }
+
+  // Calculate average reading
+  for (i = 0; i < NUMSAMPLES; i++) {
+    average += samples[i];
+  }
+  average /= NUMSAMPLES;
+
+  // Safety check to avoid divide-by-zero
+  if (average == 0) {
+    Serial.println("0.00");  // send 0 to Python if sensor is disconnected
+    delay(1000);
+    return;
+  }
+
+  // Convert analog reading to resistance
+  float resistance = 1023.0 / average - 1.0;
+  resistance = SERIESRESISTOR / resistance;
+
+  // Apply Steinhart-Hart equation
+  float steinhart;
+  steinhart = resistance / THERMISTORNOMINAL;
+  steinhart = log(steinhart);
+  steinhart /= BCOEFFICIENT;
+  steinhart += 1.0 / (TEMPERATURENOMINAL + 273.15);
+  steinhart = 1.0 / steinhart;
+  steinhart -= 273.15; // Convert to Celsius
+
+  // ✅ Send only the number (easy for Python to parse)
+  Serial.println(steinhart);
+
+  delay(2000); // Log every 2 seconds
+}
