@@ -59,61 +59,55 @@ void loop() {
 }
 
 # Jupyter Code
-#include <math.h> // For log()
+import serial
+import time
+import pandas as pd
+import matplotlib.pyplot as plt
 
-// --- Thermistor Setup ---
-#define THERMISTORPIN A0         
-#define THERMISTORNOMINAL 10000      // resistance at 25°C
-#define TEMPERATURENOMINAL 25        // nominal temperature (°C)
-#define NUMSAMPLES 5                 // number of samples to average
-#define BCOEFFICIENT 3950            // thermistor beta coefficient
-#define SERIESRESISTOR 10000         // fixed resistor value in ohms
+# --- Serial Setup ---
+port = 'COM5'         # Change this to match your Arduino port
+baud_rate = 9600
 
-int samples[NUMSAMPLES];
+# --- Logging Setup ---
+timestamps = []
+temperatures = []
 
-void setup() {
-  Serial.begin(9600);
-  while (!Serial) {}
-}
+# --- Open Serial Connection ---
+ser = serial.Serial(port, baud_rate, timeout=1)
+time.sleep(2)  # Wait for the Arduino to reset
 
-void loop() {
-  float average = 0;
-  uint8_t i;
+print("Logging started. Press Stop (or interrupt) to end.")
 
-  // Take NUMSAMPLES analog readings
-  for (i = 0; i < NUMSAMPLES; i++) {
-    samples[i] = analogRead(THERMISTORPIN);
-    delay(10);
-  }
+try:
+    while True:
+        if ser.in_waiting:
+            line = ser.readline().decode('utf-8').strip()
+            try:
+                temp = float(line)
+                now = time.strftime("%Y-%m-%d %H:%M:%S")
+                timestamps.append(now)
+                temperatures.append(temp)
+                print(f"{now} -> {temp:.2f} °C")
+            except ValueError:
+                pass  # Ignore bad data lines
+except KeyboardInterrupt:
+    print("Logging stopped by user.")
+finally:
+    ser.close()
 
-  // Calculate average reading
-  for (i = 0; i < NUMSAMPLES; i++) {
-    average += samples[i];
-  }
-  average /= NUMSAMPLES;
+    # --- Save Data ---
+    df = pd.DataFrame({
+        'Timestamp': timestamps,
+        'Temperature (°C)': temperatures
+    })
+    df.to_csv("temperature_log.csv", index=False)
 
-  // Safety check to avoid divide-by-zero
-  if (average == 0) {
-    Serial.println("0.00");  // send 0 to Python if sensor is disconnected
-    delay(1000);
-    return;
-  }
-
-  // Convert analog reading to resistance
-  float resistance = 1023.0 / average - 1.0;
-  resistance = SERIESRESISTOR / resistance;
-
-  // Apply Steinhart-Hart equation
-  float steinhart;
-  steinhart = resistance / THERMISTORNOMINAL;
-  steinhart = log(steinhart);
-  steinhart /= BCOEFFICIENT;
-  steinhart += 1.0 / (TEMPERATURENOMINAL + 273.15);
-  steinhart = 1.0 / steinhart;
-  steinhart -= 273.15; // Convert to Celsius
-
-  // ✅ Send only the number (easy for Python to parse)
-  Serial.println(steinhart);
-
-  delay(2000); // Log every 2 seconds
-}
+    # --- Plot Data ---
+    plt.figure(figsize=(10, 5))
+    plt.plot(pd.to_datetime(df['Timestamp']), df['Temperature (°C)'], marker='o')
+    plt.xlabel("Time")
+    plt.ylabel("Temperature (°C)")
+    plt.title("Temperature Over Time")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
