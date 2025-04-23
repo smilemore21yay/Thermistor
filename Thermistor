@@ -55,7 +55,7 @@ void loop() {
   // ✅ Send only the number (easy for Python to parse)
   Serial.println(steinhart);
 
-  delay(2000); // Log every 2 seconds
+  delay(1000*60*5); // Log every 2 seconds
 }
 
 # Jupyter Code
