@@ -84,6 +84,8 @@ try:
             line = ser.readline().decode('utf-8').strip()
             try:
                 temp = float(line)
+                # Here is where the dissolved oxygen would be calcualted and then put into another csv file
+                # Just put into another fucntion or put a false or true statement
                 now = time.strftime("%Y-%m-%d %H:%M:%S")
                 timestamps.append(now)
                 temperatures.append(temp)
