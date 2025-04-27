@@ -63,6 +63,7 @@ import serial
 import time
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
 
 # --- Serial Setup ---
 port = 'COM5'         # Change this to match your Arduino port
@@ -71,6 +72,7 @@ baud_rate = 9600
 # --- Logging Setup ---
 timestamps = []
 temperatures = []
+oxygen_values = []  # <-- Add this list to store oxygen data
 
 # --- Open Serial Connection ---
 ser = serial.Serial(port, baud_rate, timeout=1)
@@ -84,11 +86,12 @@ try:
             line = ser.readline().decode('utf-8').strip()
             try:
                 temp = float(line)
-                # Here is where the dissolved oxygen would be calcualted and then put into another csv file
-                # Just put into another fucntion or put a false or true statement
+                C_p = 14.621 - (0.41022 * temp) + (0.007991 * temp**2) - (0.000077774 * temp**3)
+                print(f"Oxygen saturation concentration (C_p): {C_p:.4f} mg/L")          
                 now = time.strftime("%Y-%m-%d %H:%M:%S")
                 timestamps.append(now)
                 temperatures.append(temp)
+                oxygen_values.append(C_p)  # <-- Store oxygen value
                 print(f"{now} -> {temp:.2f} °C")
             except ValueError:
                 pass  # Ignore bad data lines
@@ -100,16 +103,27 @@ finally:
     # --- Save Data ---
     df = pd.DataFrame({
         'Timestamp': timestamps,
-        'Temperature (°C)': temperatures
+        'Temperature (°C)': temperatures,
+        'Oxygen (mg/L)': oxygen_values  # <-- Save oxygen to CSV
     })
-    df.to_csv("temperature_log.csv", index=False)
+    df.to_csv("temperature_oxygen_log.csv", index=False)
 
-    # --- Plot Data ---
+    # --- Plot Temperature Data ---
     plt.figure(figsize=(10, 5))
     plt.plot(pd.to_datetime(df['Timestamp']), df['Temperature (°C)'], marker='o')
     plt.xlabel("Time")
     plt.ylabel("Temperature (°C)")
     plt.title("Temperature Over Time")
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+    # --- Plot Oxygen Data ---
+    plt.figure(figsize=(10, 5))
+    plt.plot(pd.to_datetime(df['Timestamp']), df['Oxygen (mg/L)'], marker='o', color='green')
+    plt.xlabel("Time")
+    plt.ylabel("Oxygen Saturation Concentration (mg/L)")
+    plt.title("Oxygen Saturation Concentration Over Time")
     plt.grid(True)
     plt.tight_layout()
     plt.show()
